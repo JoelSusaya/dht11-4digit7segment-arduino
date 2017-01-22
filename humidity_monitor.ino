@@ -1,3 +1,13 @@
+/*
+ * VirtualDelay: http://www.avdweb.nl/arduino/libraries/virtualdelay.html
+ * VirtualDelay allows for easy non-blocking delays/timers so you can make callbacks
+ * at set intervals. It has additional functionality you can read about at the website above.
+ * 
+ * SevSeg: https://github.com/DeanIsMe/SevSeg
+ * SevSeg looks like a good library to use for the 4 digit 7 segment display,
+ * but I wasn't sure how to use it with a shift register.
+ */
+
 #include <VirtualDelay.h>
 #include <dht11.h>
 
@@ -15,10 +25,10 @@ const int DHT11_PIN = 2;
 // set  up pins for digital display
 const int DIGIT_PINS[4] = {4, 5, 6, 7};
 
-// Shift register pins
-const int DATA_PIN = 8;   //74HC595  pin 14 DS
-const int LATCH_PIN = 9;  //74HC595  pin 12 STCP
-const int CLOCK_PIN = 10; //74HC595  pin 11 SHCP
+// Shift register pins; 74HC595
+const int DATA_PIN = 8;
+const int LATCH_PIN = 9;
+const int CLOCK_PIN = 10;
 
 // Code map for numbers and characters
 static const byte DIGIT_CODE_MAP[] = {
@@ -81,10 +91,10 @@ void bufferDigits(int num);
 void sampleDHT();
 void updateDisplay();
 
-/* *
-Sets serial baud rate to 9600.
-Sets all pins to output mode.
-/* */
+/* 
+ * Sets serial baud rate to 9600.
+ * Sets all pins to output mode.
+ */
 void setup() {
   //Serial.begin(9600);
   for (int i = 0; i < 4; i++) {
