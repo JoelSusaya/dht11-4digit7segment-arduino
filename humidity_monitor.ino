@@ -33,7 +33,7 @@ dht11 DHT11;
 
 // Use VirtualDelay to keep track of the DHT11 sample rate (1hz or 1000ms)
 // This allows the display to scan without being blocked by the delay() command
-VirtualDelay dht_timer(millis);
+VirtualDelay DHT_TIMER(millis);
 
 // Set DHT11 Pin
 const int DHT11_PIN = 2;
@@ -150,7 +150,7 @@ void setup() {
 void loop() {
   
   // If the timer is done, we sample the DHT and store that as the current sample
-  if (dht_timer.done(1000)) {
+  if (DHT_TIMER.done(1000)) {
     
     // Sample the DHT and check the status; if we got a -1 from sampling, then
     // return, otherwise, store the sample as the current sample.
