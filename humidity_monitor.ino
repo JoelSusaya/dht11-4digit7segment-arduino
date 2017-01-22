@@ -86,7 +86,7 @@ Sets serial baud rate to 9600.
 Sets all pins to output mode.
 /* */
 void setup() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   for (int i = 0; i < 4; i++) {
     pinMode(DIGIT_PINS[i], OUTPUT);
   }
@@ -103,6 +103,9 @@ void loop() {
     sampleDHT();
   }
   updateDisplay();
+
+  // Add a delay to prevent the refresh from being too high (causes 'dimming' and/or excessive blinking)
+  delay(2);
 }
 
 // Take a two digit number and store it in the buffered_digits array
@@ -117,7 +120,7 @@ void sampleDHT() {
   int chk = DHT11.read(DHT11_PIN);
 
 // Status logging using DHT11 library
-/* */  
+/* *
   Serial.print("Read sensor: ");
   switch (chk) {
     case DHTLIB_OK:
@@ -142,7 +145,7 @@ void sampleDHT() {
   char status_log_chars[12];
   sprintf(status_log_chars, "D1: %d, D2: %d", buffered_digits[0], buffered_digits[1]);
   Serial.println(status_log_chars);
-  /* */
+  /* *
   Serial.print("Humidity (%): ");
   Serial.println((int)DHT11.humidity);
   /* */
@@ -159,21 +162,18 @@ void updateDisplay() {
 
   // Set the shift register to blank so that when we turn on the digit pin in the next step
   // there won't be a glow coming from digit segments that should be turned off
-  digitalWrite(LATCH_PIN, LOW);
+  digitalWrite(LATCH_PIN, PIN_OFF);
   shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, B00000000);
-  digitalWrite(LATCH_PIN, HIGH);
+  digitalWrite(LATCH_PIN, PIN_ON);
 
   // Turn on the pin that we're updating this cycle
   // This is the only pin that will display during this cycle
   digitalWrite(DIGIT_PINS[scan_digit], DIGIT_ON);
 
   // Update the shift register to display a the number for the current digit.
-  digitalWrite(LATCH_PIN, LOW);
+  digitalWrite(LATCH_PIN, PIN_OFF);
   shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, DIGIT_CODE_MAP[buffered_digits[scan_digit]]);
-  digitalWrite(LATCH_PIN, HIGH);
-
-  // WHY DOES REMOVING THIS BREAK THINGS?!
-  Serial.println(buffered_digits[scan_digit]);
+  digitalWrite(LATCH_PIN, PIN_ON);
 
   // Increase the scan_digit we're on and reset it to 0 if we've gone over 1.
   // Increase this to three to allow all four digit displays to be used [would require new bufferDigits()].
