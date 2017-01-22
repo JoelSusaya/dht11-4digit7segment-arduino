@@ -1,12 +1,17 @@
 /*
- * VirtualDelay: http://www.avdweb.nl/arduino/libraries/virtualdelay.html
- * VirtualDelay allows for easy non-blocking delays/timers so you can make callbacks
- * at set intervals. It has additional functionality you can read about at the website above.
+ * Drafted by Joel Susaya
  * 
- * SevSeg: https://github.com/DeanIsMe/SevSeg
- * SevSeg looks like a good library to use for the 4 digit 7 segment display,
- * but I wasn't sure how to use it with a shift register.
- */
+ * Please see the following sources:
+   VirtualDelay: http://www.avdweb.nl/arduino/libraries/virtualdelay.html
+   VirtualDelay allows for easy non-blocking delays/timers so you can make callbacks
+   at set intervals. It has additional functionality you can read about at the website above.
+
+   SevSeg: https://github.com/DeanIsMe/SevSeg
+   SevSeg looks like a good library to use for the 4 digit 7 segment display,
+   but I wasn't sure how to use it with a shift register.
+
+   Here's a similar project by Rui Santos: https://gist.github.com/ruisantos16/5419223
+*/
 
 #include <VirtualDelay.h>
 #include <dht11.h>
@@ -32,14 +37,14 @@ const int CLOCK_PIN = 10;
 
 // Code map for numbers and characters
 static const byte DIGIT_CODE_MAP[] = {
-  //             Segments   
-  B00111111, // 0   "0"  
-  B00000110, // 1   "1" 
-  B01011011, // 2   "2" 
-  B01001111, // 3   "3"   
-  B01100110, // 4   "4"  
-  B01101101, // 5   "5" 
-  B01111101, // 6   "6" 
+  //             Segments
+  B00111111, // 0   "0"
+  B00000110, // 1   "1"
+  B01011011, // 2   "2"
+  B01001111, // 3   "3"
+  B01100110, // 4   "4"
+  B01101101, // 5   "5"
+  B01111101, // 6   "6"
   B00000111, // 7   "7"
   B01111111, // 8   "8"
   B01101111, // 9   "9"
@@ -73,9 +78,14 @@ static const byte DIGIT_CODE_MAP[] = {
   B01000000, // 45  '-'  DASH
 };
 
+// Create an array to keep track of the last 20 samples so we can display the average
+// Also create a counter to iterate over the samples
+int samples[20];
+int current_sample = 0;
+
 // buffered_digits keeps track of which numbers or characters should show up on each digit display
 // scan_digit keeps track of which segment is being updated during any given loop
-int buffered_digits[4] = {0, 0, 0, 0};
+int buffered_digits[4];
 int scan_digit = 0;
 
 // For my setup, LOW is on for the digit pins, while HIGH is off.
@@ -87,52 +97,84 @@ bool PIN_ON = HIGH;
 bool PIN_OFF = LOW;
 
 // Function prototypes
-void bufferDigits(int num);
-void sampleDHT();
+int sampleDHT();
+float getSamplesAverage();
+void bufferDigits(int number);
 void updateDisplay();
 
-/* 
- * Sets serial baud rate to 9600.
- * Sets all pins to output mode.
- */
+/*
+   Sets serial baud rate to 9600.
+   Sets all pins to output mode.
+*/
 void setup() {
-  //Serial.begin(9600);
+  /* *
+  Serial.begin(9600);
+  /* */
+
+  // Set pins to output mode
   for (int i = 0; i < 4; i++) {
     pinMode(DIGIT_PINS[i], OUTPUT);
   }
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
+
+  /* Sample the DHT11 once and populate the entire sample array with the initial
+     value. That way when we average the samples, we won't need additional logic to
+     deal with the case of the array not being full or having values of 0.
+  */
+  int initial_sample = sampleDHT();
+  for (int sample = 0; sample < 20; sample++) {
+    samples[sample] = initial_sample;
+  }
 }
 
 // Each loop checks to see if it's been 1000 ms since we last sampled the DHT11
 // and if so it samples it and updates the buffered_digits.
 // The display is updated each loop regardless of whether the DHT11 was sampled.
 void loop() {
+  
+  // If the timer is done, we sample the DHT and store that as the current sample
   if (dht_timer.done(1000)) {
-    sampleDHT();
+    
+    // Sample the DHT and check the status; if we got a -1 from sampling, then
+    // return, otherwise, store the sample as the current sample.
+    int sample = sampleDHT();
+    if (sample == -1) return;
+    samples[current_sample] = sample;
+
+    // Get the average of the samples and multiply it by 100 to store the digits in
+    // an integer.
+    int average = (int)(getSamplesAverage() * 100);
+
+    // Buffer the average so the display can be updated
+    bufferDigits(average);
+
+    // Increase the current_sample and reset back to 0 if we've reached the end
+    current_sample++;
+    if (current_sample > 19) {
+      current_sample = 0;
+    }
   }
+
+  // Update the display
   updateDisplay();
 
   // Add a delay to prevent the refresh from being too high (causes 'dimming' and/or excessive blinking)
   delay(2);
 }
 
-// Take a two digit number and store it in the buffered_digits array
-void bufferDigits(int num) {
-  buffered_digits[0] = num % 10;
-  num /= 10;
-  buffered_digits[1] = num;
-}
-
 // Sample the DHT and buffer the digits from it into the buffered_digits array.
-void sampleDHT() {
+int sampleDHT() {
   int chk = DHT11.read(DHT11_PIN);
+  if (chk == DHTLIB_OK) {
+    return (int)DHT11.humidity;
+  }
 
-// Status logging using DHT11 library
-/* *
-  Serial.print("Read sensor: ");
-  switch (chk) {
+  /* Status logging using DHT11 library
+    /* *
+    Serial.print("Read sensor: ");
+    switch (chk) {
     case DHTLIB_OK:
       Serial.println("OK");
       break;
@@ -145,20 +187,35 @@ void sampleDHT() {
     default:
       Serial.println("Unknown error");
       break;
-  }
-/* */
-  // Buffer digits globally because whatever
-  bufferDigits((int)DHT11.humidity);
+    }
+    /* */
 
-  // Debugging messages
-  /* *
-  char status_log_chars[12];
-  sprintf(status_log_chars, "D1: %d, D2: %d", buffered_digits[0], buffered_digits[1]);
-  Serial.println(status_log_chars);
-  /* *
-  Serial.print("Humidity (%): ");
-  Serial.println((int)DHT11.humidity);
-  /* */
+  return -1;
+}
+
+// Too lazy to encapsulate this properly. Iterates over the samples array to get
+// the average and return it. The samples array is populated with the initial
+// humidity reading during setup(), so there's no need to worry about null or 0
+// values.
+float getSamplesAverage() {
+  int sum;
+  for (int sample = 0; sample < 20; sample++) {
+    sum += samples[sample];
+  }
+  return (float)sum / 20;
+}
+
+// Take a float and buffer 4 significant digits in this form: %d%d.%d%d
+// The decimal place will be taken care of during the updateDisplay() step.
+// This simply buffers the digits as integers.
+void bufferDigits(int number) {
+  buffered_digits[0] = (int)(number % 10);
+  number /= 10;
+  buffered_digits[1] = number % 10;
+  number /= 10;
+  buffered_digits[2] = number % 10;
+  number /= 10;
+  buffered_digits[3] = number;
 }
 
 // Updates the display each loop. Each loop updates the next digit on the display.
@@ -181,14 +238,21 @@ void updateDisplay() {
   digitalWrite(DIGIT_PINS[scan_digit], DIGIT_ON);
 
   // Update the shift register to display a the number for the current digit.
+  // If we're using the 3 digit from the right (scan_digit == 2), then we use an |
+  // to switch on the bit that controls the "." segment on that digit.
   digitalWrite(LATCH_PIN, PIN_OFF);
-  shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, DIGIT_CODE_MAP[buffered_digits[scan_digit]]);
+  if (scan_digit == 2) {
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, (DIGIT_CODE_MAP[buffered_digits[scan_digit]]) | B10000000);
+  }
+  else {
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, DIGIT_CODE_MAP[buffered_digits[scan_digit]]);
+  }
   digitalWrite(LATCH_PIN, PIN_ON);
 
   // Increase the scan_digit we're on and reset it to 0 if we've gone over 1.
   // Increase this to three to allow all four digit displays to be used [would require new bufferDigits()].
   scan_digit++;
-  if (scan_digit > 1){
+  if (scan_digit > 3) {
     scan_digit = 0;
   }
   /* */
