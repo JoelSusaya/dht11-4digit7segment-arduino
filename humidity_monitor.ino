@@ -10,7 +10,14 @@
    SevSeg looks like a good library to use for the 4 digit 7 segment display,
    but I wasn't sure how to use it with a shift register.
 
+   DHT11Lib: http://playground.arduino.cc/Main/DHT11Lib
+   The library header and cpp file can be found towards the bottom of the page. I used this
+   library specifically for the DHT11 because while using a general DHT library with VirtualDelay,
+   I experienced sampling timeout issues. Using this library solved that issue.
+
    Here's a similar project by Rui Santos: https://gist.github.com/ruisantos16/5419223
+   The project uses a similar (or the same) display and the same shift register. A temperature
+   sensor is used instead.
 
    TODO:
    * Figure out how to clean up code.
