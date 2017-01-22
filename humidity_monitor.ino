@@ -11,6 +11,11 @@
    but I wasn't sure how to use it with a shift register.
 
    Here's a similar project by Rui Santos: https://gist.github.com/ruisantos16/5419223
+
+   TODO:
+   * Figure out how to clean up code.
+   * Clean up code.
+   * Consolidate DHT11 sampling/averaging pieces.
 */
 
 #include <VirtualDelay.h>
@@ -78,9 +83,12 @@ static const byte DIGIT_CODE_MAP[] = {
   B01000000, // 45  '-'  DASH
 };
 
-// Create an array to keep track of the last 20 samples so we can display the average
+// Create an array to keep track of the last SAMPLE_SIZE samples so we can display the average
 // Also create a counter to iterate over the samples
-int samples[20];
+// Because the samples are updated once per second, the SAMPLE_SIZE is effectively equal
+// to how many seconds of samples we're storing.
+const int SAMPLE_SIZE = 60;
+int samples[SAMPLE_SIZE];
 int current_sample = 0;
 
 // buffered_digits keeps track of which numbers or characters should show up on each digit display
@@ -124,7 +132,7 @@ void setup() {
      deal with the case of the array not being full or having values of 0.
   */
   int initial_sample = sampleDHT();
-  for (int sample = 0; sample < 20; sample++) {
+  for (int sample = 0; sample < SAMPLE_SIZE; sample++) {
     samples[sample] = initial_sample;
   }
 }
@@ -199,10 +207,10 @@ int sampleDHT() {
 // values.
 float getSamplesAverage() {
   int sum;
-  for (int sample = 0; sample < 20; sample++) {
+  for (int sample = 0; sample < SAMPLE_SIZE; sample++) {
     sum += samples[sample];
   }
-  return (float)sum / 20;
+  return (float)sum / SAMPLE_SIZE;
 }
 
 // Take a float and buffer 4 significant digits in this form: %d%d.%d%d
