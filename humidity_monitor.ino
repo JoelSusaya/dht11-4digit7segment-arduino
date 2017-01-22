@@ -172,6 +172,9 @@ void updateDisplay() {
   shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, DIGIT_CODE_MAP[buffered_digits[scan_digit]]);
   digitalWrite(LATCH_PIN, HIGH);
 
+  // WHY DOES REMOVING THIS BREAK THINGS?!
+  Serial.println(buffered_digits[scan_digit]);
+
   // Increase the scan_digit we're on and reset it to 0 if we've gone over 1.
   // Increase this to three to allow all four digit displays to be used [would require new bufferDigits()].
   scan_digit++;
@@ -180,4 +183,3 @@ void updateDisplay() {
   }
   /* */
 }
-
