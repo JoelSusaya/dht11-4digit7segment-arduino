@@ -28,6 +28,10 @@
 #include <VirtualDelay.h>
 #include <dht11.h>
 
+// verbose mode for serial output (for debugging)
+// Currently, when this is true, the display refreshes strangely due to the timing
+const bool VERBOSE = true;
+
 // Create a DHT11 object to interface with the sensor
 dht11 DHT11;
 
@@ -122,9 +126,10 @@ void updateDisplay();
    Sets all pins to output mode.
 */
 void setup() {
-  /* *
-  Serial.begin(9600);
-  /* */
+
+  if (VERBOSE) {
+    Serial.begin(9600);
+  }
 
   // Set pins to output mode
   for (int i = 0; i < 4; i++) {
@@ -151,6 +156,10 @@ void loop() {
   
   // If the timer is done, we sample the DHT and store that as the current sample
   if (DHT_TIMER.done(1000)) {
+    if (VERBOSE) {
+      Serial.print("Current Sample: ");
+      Serial.println(current_sample);
+    }
     
     // Sample the DHT and check the status; if we got a -1 from sampling, then
     // return, otherwise, store the sample as the current sample.
@@ -167,8 +176,18 @@ void loop() {
 
     // Increase the current_sample and reset back to 0 if we've reached the end
     current_sample++;
-    if (current_sample > 19) {
+    if (current_sample >= SAMPLE_SIZE) {
       current_sample = 0;
+    }
+
+    if (VERBOSE) {
+      updateDisplay();
+      char message[256], *log_message = message;
+      log_message += sprintf(log_message, "Samples: ");
+      for (int sample = 0; sample < SAMPLE_SIZE; sample++) {
+        log_message += sprintf(log_message,"%d,",samples[sample]);
+      }
+      Serial.println(message);
     }
   }
 
@@ -183,25 +202,31 @@ void loop() {
 int sampleDHT() {
   int chk = DHT11.read(DHT11_PIN);
   if (chk == DHTLIB_OK) {
+    if (VERBOSE) {
+      Serial.print("Humidity (%): ");
+      Serial.println(DHT11.humidity);
+    }
     return (int)DHT11.humidity;
   }
 
   /* Status logging using DHT11 library
-    /* *
-    Serial.print("Read sensor: ");
-    switch (chk) {
-    case DHTLIB_OK:
-      Serial.println("OK");
-      break;
-    case DHTLIB_ERROR_CHECKSUM:
-      Serial.println("Checksum error");
-      break;
-    case DHTLIB_ERROR_TIMEOUT:
-      Serial.println("Time out error");
-      break;
-    default:
-      Serial.println("Unknown error");
-      break;
+    /* */
+    if (VERBOSE) {
+      Serial.print("Read sensor: ");
+      switch (chk) {
+      case DHTLIB_OK:
+        Serial.println("OK");
+        break;
+      case DHTLIB_ERROR_CHECKSUM:
+        Serial.println("Checksum error");
+        break;
+      case DHTLIB_ERROR_TIMEOUT:
+        Serial.println("Time out error");
+        break;
+      default:
+        Serial.println("Unknown error");
+        break;
+      }
     }
     /* */
 
